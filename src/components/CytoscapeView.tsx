@@ -53,30 +53,41 @@ export function CytoscapeView({ payload }: Props) {
           selector: 'node',
           style: {
             'background-color': '#e2e8f0',
-            label: 'data(label)',
             color: '#e6e9ef',
-            'font-size': 80,
+            'font-size': 50,
             'text-valign': 'center',
             'text-halign': 'right',
-            'text-margin-x': 30,
+            'text-margin-x': 12,
             'text-outline-color': '#0b0d12',
-            'text-outline-width': 8,
-            width: 60,
-            height: 60,
-            'border-width': 4,
+            'text-outline-width': 5,
+            width: 25,
+            height: 25,
+            'border-width': 2,
             'border-color': '#0b0d12',
+            'overlay-padding': 12,
+          },
+        },
+        {
+          selector: 'node.hovered',
+          style: {
+            label: 'data(label)',
+            'background-color': '#34d399',
+            'border-color': '#34d399',
+            width: 34,
+            height: 34,
+            'z-index': 10,
           },
         },
         {
           selector: 'edge',
           style: {
-            width: 'mapData(weight, 1, 50, 10, 40)',
+            width: 'mapData(weight, 1, 50, 2, 8)',
             'line-color': 'data(color)',
             'target-arrow-color': 'data(color)',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
-            'arrow-scale': 2,
-            opacity: 0.85,
+            'arrow-scale': 1,
+            opacity: 0.75,
           },
         },
       ],
@@ -97,6 +108,13 @@ export function CytoscapeView({ payload }: Props) {
     });
 
     cyRef.current = cy;
+
+    cy.on('mouseover', 'node', (evt) => {
+      evt.target.addClass('hovered');
+    });
+    cy.on('mouseout', 'node', (evt) => {
+      evt.target.removeClass('hovered');
+    });
 
     const refit = () => {
       cy.resize();
