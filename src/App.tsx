@@ -197,13 +197,26 @@ export function App() {
           <div className="mt-0.5 truncate text-sm font-medium text-zinc-100">
             {feedLabel ?? '—'}
           </div>
-          <div className="mt-1 flex items-center justify-between gap-2">
-            <span className="text-xs text-zinc-500">{routes.length} routes</span>
+          <div className="mt-1 text-xs text-zinc-500">{routes.length} routes</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               onClick={selectAllTrips}
               className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
             >
               Select all trips
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              disabled={selected.size === 0}
+              className="rounded-md border border-zinc-700 px-2 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              Clear
+            </button>
+            <button
+              onClick={resetFeed}
+              className="rounded-md border border-zinc-700 px-2 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+            >
+              New feed
             </button>
           </div>
         </header>
@@ -216,12 +229,7 @@ export function App() {
             loadTrips={loadTrips}
           />
         </div>
-        <SelectionBar
-          count={selected.size}
-          onClear={() => setSelected(new Set())}
-          onReset={resetFeed}
-          building={isBuilding}
-        />
+        <SelectionBar count={selected.size} building={isBuilding} />
       </aside>
       <section className="min-w-0 flex-1 p-4">
         <GraphPanel
