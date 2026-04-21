@@ -14,6 +14,7 @@
     "cytoscape": "^3.33.2",
     "cytoscape-dagre": "^2.5.0",
     "cytoscape-fcose": "^2.2.0",
+    "d3-force": "^3.0.0",
     "gtfs-sqljs": "^0.7.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.3",
+    "@types/d3-force": "^3.0.10",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/sql.js": "^1.4.11",
