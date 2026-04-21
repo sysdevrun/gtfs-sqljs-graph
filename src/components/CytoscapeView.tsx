@@ -1,35 +1,146 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import cytoscape from 'cytoscape';
-import type { Core, ElementDefinition } from 'cytoscape';
+import type { Core, ElementDefinition, LayoutOptions } from 'cytoscape';
 import dagre from 'cytoscape-dagre';
+import fcose from 'cytoscape-fcose';
 import type { GraphPayload } from '../types';
 
 cytoscape.use(dagre);
+cytoscape.use(fcose);
+
+type LayoutKey =
+  | 'geographic'
+  | 'fcose'
+  | 'cose'
+  | 'dagre-lr'
+  | 'dagre-tb'
+  | 'breadthfirst'
+  | 'concentric'
+  | 'circle'
+  | 'grid'
+  | 'random'
+  | 'preset';
+
+const LAYOUT_LABELS: Record<LayoutKey, string> = {
+  geographic: 'Geographic (lat/lon)',
+  fcose: 'fCoSE (force-directed)',
+  cose: 'CoSE (force-directed)',
+  'dagre-lr': 'Dagre — left→right',
+  'dagre-tb': 'Dagre — top→bottom',
+  breadthfirst: 'Breadth-first',
+  concentric: 'Concentric',
+  circle: 'Circle',
+  grid: 'Grid',
+  random: 'Random',
+  preset: 'Preset (no layout)',
+};
+
+function hasCoords(payload: GraphPayload): boolean {
+  return (
+    payload.nodes.length > 0 &&
+    payload.nodes.every((n) => n.lat != null && n.lon != null)
+  );
+}
+
+function buildLayoutOptions(key: LayoutKey): LayoutOptions {
+  const common = { fit: true, padding: 30, animate: false as const };
+  switch (key) {
+    case 'geographic':
+    case 'preset':
+      return { name: 'preset', ...common };
+    case 'fcose':
+      return {
+        name: 'fcose',
+        quality: 'default',
+        randomize: true,
+        nodeSeparation: 120,
+        idealEdgeLength: 80,
+        ...common,
+      } as LayoutOptions;
+    case 'cose':
+      return {
+        name: 'cose',
+        idealEdgeLength: () => 80,
+        nodeOverlap: 20,
+        randomize: true,
+        componentSpacing: 100,
+        ...common,
+      } as LayoutOptions;
+    case 'dagre-lr':
+      return {
+        name: 'dagre',
+        // @ts-expect-error dagre-specific option
+        rankDir: 'LR',
+        nodeSep: 24,
+        rankSep: 60,
+        ...common,
+      };
+    case 'dagre-tb':
+      return {
+        name: 'dagre',
+        // @ts-expect-error dagre-specific option
+        rankDir: 'TB',
+        nodeSep: 24,
+        rankSep: 60,
+        ...common,
+      };
+    case 'breadthfirst':
+      return {
+        name: 'breadthfirst',
+        directed: true,
+        spacingFactor: 1.2,
+        ...common,
+      };
+    case 'concentric':
+      return {
+        name: 'concentric',
+        concentric: (node) => node.degree(false),
+        levelWidth: () => 2,
+        minNodeSpacing: 30,
+        ...common,
+      };
+    case 'circle':
+      return { name: 'circle', ...common };
+    case 'grid':
+      return { name: 'grid', ...common };
+    case 'random':
+      return { name: 'random', ...common };
+  }
+}
 
 interface Props {
   payload: GraphPayload;
-}
-
-function hasCoords(payload: GraphPayload): boolean {
-  return payload.nodes.every((n) => n.lat != null && n.lon != null);
 }
 
 export function CytoscapeView({ payload }: Props) {
   const container = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
 
+  const geographic = useMemo(() => hasCoords(payload), [payload]);
+  const [layoutKey, setLayoutKey] = useState<LayoutKey>(
+    geographic ? 'geographic' : 'fcose',
+  );
+
+  // When the payload changes and the previous choice was 'geographic' but new data lacks coords,
+  // fall back to fcose automatically.
+  useEffect(() => {
+    if (layoutKey === 'geographic' && !geographic) {
+      setLayoutKey('fcose');
+    }
+  }, [geographic, layoutKey]);
+
   useEffect(() => {
     const el = container.current;
     if (!el) return;
 
-    const geographic = hasCoords(payload);
     const SCALE = 10000;
+    const usePreset = layoutKey === 'geographic' && geographic;
     const elements: ElementDefinition[] = [
       ...payload.nodes.map((n) => {
         const def: ElementDefinition = {
           data: { id: n.id, label: n.label },
         };
-        if (geographic && n.lat != null && n.lon != null) {
+        if (usePreset && n.lat != null && n.lon != null) {
           def.position = { x: n.lon * SCALE, y: -n.lat * SCALE };
         }
         return def;
@@ -94,27 +205,13 @@ export function CytoscapeView({ payload }: Props) {
       wheelSensitivity: 0.2,
       maxZoom: 3,
       minZoom: 0.1,
-      layout: geographic
-        ? { name: 'preset', fit: true, padding: 40 }
-        : {
-            name: 'dagre',
-            // @ts-expect-error dagre layout options are not in base typings
-            rankDir: 'LR',
-            nodeSep: 24,
-            rankSep: 60,
-            fit: true,
-            padding: 20,
-          },
+      layout: buildLayoutOptions(layoutKey),
     });
 
     cyRef.current = cy;
 
-    cy.on('mouseover', 'node', (evt) => {
-      evt.target.addClass('hovered');
-    });
-    cy.on('mouseout', 'node', (evt) => {
-      evt.target.removeClass('hovered');
-    });
+    cy.on('mouseover', 'node', (evt) => evt.target.addClass('hovered'));
+    cy.on('mouseout', 'node', (evt) => evt.target.removeClass('hovered'));
 
     const refit = () => {
       cy.resize();
@@ -130,14 +227,38 @@ export function CytoscapeView({ payload }: Props) {
       cy.destroy();
       cyRef.current = null;
     };
-  }, [payload]);
+  }, [payload, layoutKey, geographic]);
 
-  const geographic = hasCoords(payload);
+  const options: LayoutKey[] = [
+    ...(geographic ? (['geographic'] as LayoutKey[]) : []),
+    'fcose',
+    'cose',
+    'dagre-lr',
+    'dagre-tb',
+    'breadthfirst',
+    'concentric',
+    'circle',
+    'grid',
+    'random',
+  ];
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
       <div className="absolute left-3 top-3 z-10 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-zinc-300">
-        Cytoscape · {geographic ? 'geographic (lat/lon)' : 'dagre (hierarchical)'}
+        Cytoscape
+      </div>
+      <div className="absolute right-3 top-3 z-10">
+        <select
+          value={layoutKey}
+          onChange={(e) => setLayoutKey(e.target.value as LayoutKey)}
+          className="rounded-md border border-zinc-700 bg-black/70 px-2 py-1 text-xs font-medium text-zinc-200 outline-none backdrop-blur hover:border-zinc-500 focus:border-emerald-500"
+        >
+          {options.map((k) => (
+            <option key={k} value={k}>
+              {LAYOUT_LABELS[k]}
+            </option>
+          ))}
+        </select>
       </div>
       <div ref={container} className="h-full w-full" />
     </div>

@@ -87,6 +87,11 @@ export function App() {
     });
   }, []);
 
+  const selectAllTrips = useCallback(async () => {
+    const ids = await worker.getAllTripIds();
+    setSelected(new Set(ids));
+  }, [worker]);
+
   useEffect(() => {
     if (phase !== 'browse') return;
 
@@ -192,7 +197,15 @@ export function App() {
           <div className="mt-0.5 truncate text-sm font-medium text-zinc-100">
             {feedLabel ?? '—'}
           </div>
-          <div className="mt-1 text-xs text-zinc-500">{routes.length} routes</div>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <span className="text-xs text-zinc-500">{routes.length} routes</span>
+            <button
+              onClick={selectAllTrips}
+              className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+            >
+              Select all trips
+            </button>
+          </div>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           <RouteList

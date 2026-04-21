@@ -13,6 +13,7 @@
     "comlink": "^4.4.2",
     "cytoscape": "^3.33.2",
     "cytoscape-dagre": "^2.5.0",
+    "cytoscape-fcose": "^2.2.0",
     "gtfs-sqljs": "^0.7.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

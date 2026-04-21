@@ -72,6 +72,12 @@ const api = {
     return summaries;
   },
 
+  async getAllTripIds(): Promise<string[]> {
+    if (!gtfs) throw new Error('GTFS not loaded');
+    const all = await gtfs.getTrips();
+    return all.map((t) => t.trip_id);
+  },
+
   async getTripsByRoute(
     routeId: string,
   ): Promise<{ direction0: TripSummary[]; direction1: TripSummary[] }> {
